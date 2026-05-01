@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Technical Documentation for Clean Installation of Ubuntu, CUDA, cuDNN, and PyTorch on WSL2 | Omkar Kakade</title>
+    <meta
+      name="description"
+      content="Step-by-step setup notes for Ubuntu, CUDA, cuDNN, and PyTorch on WSL2."
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="site">
+      <header class="site-header">
+        <nav aria-label="Primary">
+          <ul class="nav">
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../posts.html" aria-current="page">Posts</a></li>
+            <li><a href="../tracker.html">Tracker</a></li>
+            <li><a href="../projects.html">Projects</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <main>
+        <article class="post">
+          <header>
+            <p class="meta">March 23, 2025</p>
+            <h1>Technical Documentation for Clean Installation of Ubuntu, CUDA, cuDNN, and PyTorch on WSL2</h1>
+          </header>
+
+          <p>
+            This guide provides step-by-step instructions for setting up a
+            clean installation of Ubuntu on Windows Subsystem for Linux 2
+            (WSL2), followed by installing CUDA, cuDNN, and PyTorch for
+            machine learning development.
+          </p>
+
+          <h2>Prerequisites</h2>
+          <ul>
+            <li>Windows 10 version 2004+ or Windows 11.</li>
+            <li>An NVIDIA GPU compatible with CUDA 12.4.</li>
+            <li>Administrative access and at least 20 GB of free disk space.</li>
+          </ul>
+
+          <h2>Core Setup Steps</h2>
+          <ol>
+            <li>Remove unused WSL distributions and set WSL2 as default.</li>
+            <li>Install Ubuntu 24.04 and basic development tools.</li>
+            <li>Install CUDA 12.4, then configure <code>CUDA_HOME</code>, <code>PATH</code>, and <code>LD_LIBRARY_PATH</code>.</li>
+            <li>Install cuDNN and verify compatibility with the CUDA version.</li>
+            <li>Create a Python virtual environment and install PyTorch with CUDA support.</li>
+          </ol>
+
+          <pre><code class="language-bash">wsl --set-default-version 2
+wsl --install -d Ubuntu-24.04
+sudo apt update &amp;&amp; sudo apt upgrade -y
+sudo apt install -y build-essential git wget curl
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124</code></pre>
+
+          <p>
+            The original post also includes troubleshooting notes for CUDA path
+            issues, PyTorch CUDA detection problems, and WSL2 GPU access.
+          </p>
+        </article>
+      </main>
+    </div>
+  </body>
+</html>

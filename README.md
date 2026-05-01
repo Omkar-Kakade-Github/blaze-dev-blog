@@ -25,6 +25,6 @@ If you use a repository site instead of a user site, these relative links will s
 
 ## Personalization
 
-- Replace `Blaze` with your name where needed.
-- Update GitHub links in `projects.html`.
-- Replace the sample posts in `posts/` with your own writing.
+- Update any remaining copy if you want a different public bio.
+- Add more project entries to `projects.html` as they are documented.
+- Expand the posts in `posts/` from these imported summaries if you want the full original articles here.

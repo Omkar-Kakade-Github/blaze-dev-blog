@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mastering CUDA Kernel Development - A Comprehensive Guide | Omkar Kakade</title>
+    <meta
+      name="description"
+      content="A guide to CUDA kernel development, GPU architecture, and memory hierarchy."
+    />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="site">
+      <header class="site-header">
+        <nav aria-label="Primary">
+          <ul class="nav">
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../posts.html" aria-current="page">Posts</a></li>
+            <li><a href="../tracker.html">Tracker</a></li>
+            <li><a href="../projects.html">Projects</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <main>
+        <article class="post">
+          <header>
+            <p class="meta">March 23, 2025</p>
+            <h1>Mastering CUDA Kernel Development - A Comprehensive Guide</h1>
+          </header>
+
+          <p>
+            Developing high-performance CUDA kernels requires a deep
+            understanding of GPU architecture, efficient memory management, and
+            careful code tuning to fully exploit the hardware. This guide
+            offers a step-by-step approach to writing CUDA kernels that are
+            both correct and highly performant.
+          </p>
+
+          <h2>What This Covers</h2>
+          <ul>
+            <li>CUDA language extensions such as <code>__global__</code>, <code>__device__</code>, and <code>__host__</code>.</li>
+            <li>Thread hierarchy, indexing, and kernel launch structure.</li>
+            <li>Memory hierarchy across global, shared, constant, local memory, and registers.</li>
+            <li>GPU hardware concepts including streaming multiprocessors and warp execution.</li>
+          </ul>
+
+          <h2>Example</h2>
+          <pre><code class="language-cpp">// Calculate global thread ID in a 1D grid of 1D blocks
+int globalIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+if (globalIdx &lt; dataSize) {
+    output[globalIdx] = someOperation(input[globalIdx]);
+}</code></pre>
+
+          <p>
+            The original post also walks through why these abstractions matter
+            for performance: occupancy, memory access patterns, divergence, and
+            how block-level cooperation shapes kernel design.
+          </p>
+        </article>
+      </main>
+    </div>
+  </body>
+</html>
