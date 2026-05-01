@@ -21,6 +21,7 @@
             <li><a href="../projects.html">Projects</a></li>
             <li><a href="../about.html">About</a></li>
           </ul>
+          <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
         </nav>
       </header>
 
@@ -32,36 +33,799 @@
           </header>
 
           <p>
-            Developing high-performance CUDA kernels requires a deep
-            understanding of GPU architecture, efficient memory management, and
-            careful code tuning to fully exploit the hardware. This guide
-            offers a step-by-step approach to writing CUDA kernels that are
+            Developing high-performance CUDA kernels requires a deep understanding of GPU
+            architecture, efficient memory management, and careful code tuning to fully exploit the
+            hardware. This guide offers a step-by-step approach to writing CUDA kernels that are
             both correct and highly performant.
           </p>
 
-          <h2>What This Covers</h2>
+          <h2>CUDA Language Extensions: The Foundation</h2>
+
+          <p>
+            Before diving into advanced concepts, it is essential to understand the basic C/C++
+            language extensions that CUDA introduces. These extensions enable parallel programming
+            on GPUs while maintaining a familiar programming model.
+          </p>
+
+          <h3>Function Type Qualifiers</h3>
+
+          <p>
+            CUDA extends C/C++ with function type qualifiers that specify where a function executes
+            and how it can be called:
+          </p>
           <ul>
-            <li>CUDA language extensions such as <code>__global__</code>, <code>__device__</code>, and <code>__host__</code>.</li>
-            <li>Thread hierarchy, indexing, and kernel launch structure.</li>
-            <li>Memory hierarchy across global, shared, constant, local memory, and registers.</li>
-            <li>GPU hardware concepts including streaming multiprocessors and warp execution.</li>
+            <li><code>__global__</code>: Functions that run on the GPU and are called from the CPU (host).</li>
+            <li><code>__device__</code>: Functions that run on the GPU and can only be called from other GPU functions.</li>
+            <li><code>__host__</code>: Functions that run on the CPU and can only be called from the CPU (this is the default).</li>
           </ul>
 
-          <h2>Example</h2>
+          <pre><code class="language-cpp">// A kernel function (runs on the GPU, called from the CPU)
+__global__ void myKernel(float* data) {
+    // Kernel code here
+}
+
+// A device function (runs on the GPU, called from the GPU)
+__device__ float computeValue(float input) {
+    return input * input;
+}
+
+// A function that can be compiled for both host and device
+__host__ __device__ float sharedFunction(float x) {
+    return x + 5.0f;
+}</code></pre>
+
+          <h3>Variable Type Qualifiers</h3>
+
+          <p>CUDA also provides qualifiers to specify the memory location for variables:</p>
+          <ul>
+            <li><code>__shared__</code>: Declares a variable in shared memory (accessible by all threads in a block).</li>
+            <li><code>__device__</code>: Declares a variable in global memory (accessible by all threads and the host).</li>
+            <li><code>__constant__</code>: Declares a variable in constant memory (read-only for all threads).</li>
+          </ul>
+
+          <pre><code class="language-cpp">__device__ float globalVariable;          // Accessible by all threads across the grid
+__constant__ float constantValue = 3.14f; // Read-only, cached constant data
+__shared__ float sharedArray[256];        // Shared within a thread block</code></pre>
+
+          <h3>Built-in Variables</h3>
+
+          <p>CUDA provides built-in variables to help threads determine their position:</p>
+          <ul>
+            <li><code>threadIdx</code>: Thread index within a block (3D vector: x, y, z).</li>
+            <li><code>blockIdx</code>: Block index within the grid (3D vector).</li>
+            <li><code>blockDim</code>: Dimensions of each block (3D vector).</li>
+            <li><code>gridDim</code>: Dimensions of the grid (3D vector).</li>
+          </ul>
+
+          <h3>Kernel Launch Syntax</h3>
+
+          <p>Kernels are launched using the triple-angle bracket syntax:</p>
+
+          <pre><code class="language-cpp">myKernel&lt;&lt;&lt;gridDimensions, blockDimensions, sharedMemBytes, stream&gt;&gt;&gt;(arguments);</code></pre>
+
+          <p>Where:</p>
+          <ul>
+            <li><code>gridDimensions</code>: Number of blocks in the grid (can be of type <code>dim3</code> for 2D/3D grids).</li>
+            <li><code>blockDimensions</code>: Number of threads per block (can be of type <code>dim3</code>).</li>
+            <li><code>sharedMemBytes</code>: (Optional) Size in bytes of dynamic shared memory.</li>
+            <li><code>stream</code>: (Optional) CUDA stream for asynchronous execution.</li>
+          </ul>
+
+          <p>
+            Don't worry if you find this syntax confusing at first—later sections include visuals
+            and additional context to help you grasp these concepts quickly.
+          </p>
+
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/CUDA_thread_hierarchy.png" alt="CUDA thread hierarchy diagram" />
+
+          <h2>Understanding the CUDA Programming Model</h2>
+
+          <p>
+            To write effective CUDA kernels, it is important to understand the programming model
+            that underpins the technology. CUDA organizes parallel execution in a hierarchical
+            structure that maximizes both flexibility and performance.
+          </p>
+
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/visual_selection.png" alt="Visual overview of CUDA programming model" />
+
+          <h3>The Thread Hierarchy</h3>
+
+          <p>
+            When a CUDA kernel is launched, it creates a grid of thread blocks. Each block contains
+            multiple threads that work together closely, sharing resources and synchronizing their
+            execution. This hierarchy naturally decomposes problems into:
+          </p>
+          <ul>
+            <li><strong>Threads:</strong> The basic execution units, each running the same kernel code but processing different data.</li>
+            <li><strong>Blocks:</strong> Groups of threads that can cooperate using shared memory and synchronization.</li>
+            <li><strong>Grids:</strong> Collections of blocks that allow the GPU to distribute work across its streaming multiprocessors (SMs).</li>
+          </ul>
+
+          <p>
+            Each thread has unique coordinates determined by <code>threadIdx</code>,
+            <code>blockIdx</code>, and <code>blockDim</code>, which help in computing the portion
+            of data to process:
+          </p>
+
           <pre><code class="language-cpp">// Calculate global thread ID in a 1D grid of 1D blocks
 int globalIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
+// Process data corresponding to this thread's position
 if (globalIdx &lt; dataSize) {
     output[globalIdx] = someOperation(input[globalIdx]);
 }</code></pre>
 
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/cuda_indexing.png" alt="CUDA indexing diagram" />
+
           <p>
-            The original post also walks through why these abstractions matter
-            for performance: occupancy, memory access patterns, divergence, and
-            how block-level cooperation shapes kernel design.
+            There is a really <a href="https://anuradha-15.medium.com/cuda-thread-indexing-fb9910cba084">great article</a>
+            which explains indexing in CUDA. Be sure to check it out if you feel stuck on this part.
           </p>
+
+          <h3>The Memory Hierarchy</h3>
+
+          <p>CUDA offers various memory types with different performance characteristics:</p>
+          <ul>
+            <li><strong>Global Memory:</strong> Large but with high latency.</li>
+            <li><strong>Shared Memory:</strong> Fast memory shared among threads in a block.</li>
+            <li><strong>Local Memory:</strong> Private to each thread, used for register spills.</li>
+            <li><strong>Registers:</strong> The fastest memory, private to each thread.</li>
+            <li><strong>Constant Memory:</strong> Read-only memory with a dedicated cache.</li>
+            <li><strong>Texture Memory:</strong> Optimized for spatial locality with built-in filtering.</li>
+          </ul>
+
+          <p>
+            Understanding when to use each type is crucial for achieving high performance. For
+            example, copying frequently reused data from global memory to shared memory can
+            significantly reduce access times.
+          </p>
+
+          <h2>Understanding GPU Hardware Architecture</h2>
+
+          <p>
+            A solid grasp of the underlying GPU hardware is key to writing effective CUDA code.
+            NVIDIA GPUs are built around a scalable array of Streaming Multiprocessors (SMs), each
+            packed with numerous computing resources.
+          </p>
+
+          <h3>Streaming Multiprocessors (SMs)</h3>
+
+          <p>Each SM includes:</p>
+          <ul>
+            <li><strong>CUDA Cores:</strong> For integer and floating-point arithmetic.</li>
+            <li><strong>Special Function Units (SFUs):</strong> For transcendental functions like sine and cosine.</li>
+            <li><strong>Warp Schedulers:</strong> Dispatch instructions to execution units.</li>
+            <li><strong>Register File:</strong> Ultra-fast storage for thread-local variables.</li>
+            <li><strong>Shared Memory/L1 Cache:</strong> Fast memory shared by threads in a block.</li>
+            <li><strong>Tensor Cores (in newer architectures):</strong> Specialized units for matrix operations.</li>
+          </ul>
+
+          <p>
+            When a kernel launches, thread blocks are distributed across available SMs. The
+            resource usage per block (registers, shared memory) directly affects how many blocks
+            can run concurrently.
+          </p>
+
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/memory-hierarchy-in-gpus-1-625x381.png" alt="Memory hierarchy in GPUs" />
+
+          <h3>Warp Execution Model</h3>
+
+          <p>
+            A <strong>warp</strong> is a group of 32 threads that execute in lockstep—meaning they
+            all execute the same instruction simultaneously, albeit on different data. Each SM
+            contains multiple warp schedulers to manage execution. Note:
+          </p>
+          <ul>
+            <li>Instructions are issued at the warp level.</li>
+            <li>Divergence within a warp (where threads follow different execution paths) can degrade performance because the divergent paths are executed serially.</li>
+          </ul>
+
+          <h3>Memory Hierarchy and Organization</h3>
+
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/gpu2.png" alt="GPU memory hierarchy" />
+
+          <ol>
+            <li><strong>Global Memory:</strong> Highest capacity with high latency; optimized when memory accesses are coalesced.</li>
+            <li><strong>L2 Cache:</strong> Shared among all SMs to reduce global memory latency.</li>
+            <li><strong>Shared Memory:</strong> Located on each SM with much lower latency than global memory.</li>
+            <li><strong>L1/Texture Cache:</strong> Optimized for specific access patterns.</li>
+            <li><strong>Registers:</strong> The fastest memory, though limited in quantity per thread.</li>
+          </ol>
+
+          <p>
+            Understanding these elements helps explain why certain optimizations work and informs
+            the design of efficient CUDA code.
+          </p>
+
+          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/Screenshot_from_2025-03-06_21-16-42.png" alt="GPU architecture screenshot" />
+
+          <h2>Global Memory Access Patterns</h2>
+
+          <h3>Global Memory Organization</h3>
+
+          <p>
+            Global memory is divided into multiple channels or banks that enable parallel access.
+            Optimizing for coalesced access—where consecutive threads access consecutive memory
+            locations—allows the GPU to combine these accesses into fewer memory transactions,
+            boosting performance.
+          </p>
+
+          <h3>Memory Coalescing</h3>
+
+          <p>Memory coalescing minimizes the number of transactions by combining memory accesses from threads in a warp:</p>
+
+          <pre><code class="language-cpp">// Coalesced access: adjacent threads access adjacent memory
+__global__ void coalescedAccess(float* data) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    data[idx] = data[idx] * 2.0f;  // Each thread accesses its corresponding element
+}
+
+// Non-coalesced access: threads access non-adjacent memory
+__global__ void stridedAccess(float* data, int stride) {
+    int idx = (blockIdx.x * blockDim.x + threadIdx.x) * stride;
+    data[idx] = data[idx] * 2.0f;
+}</code></pre>
+
+          <h3>Practical Rules for Global Memory Access</h3>
+
+          <p>For optimal performance:</p>
+          <ul>
+            <li><strong>Align data structures</strong> to appropriate boundaries (typically 128 bytes).</li>
+            <li><strong>Ensure the starting address</strong> of data is aligned.</li>
+            <li><strong>Make adjacent threads access adjacent memory elements.</strong></li>
+            <li><strong>Consider using structure-of-arrays</strong> instead of an array-of-structures layout.</li>
+            <li><strong>Choose appropriate data types</strong> (preferably 4, 8, or 16 bytes) for memory transactions.</li>
+          </ul>
+
+          <h2>Writing Your First CUDA Kernel</h2>
+
+          <p>A simple CUDA kernel typically follows this structure:</p>
+
+          <pre><code class="language-cpp">__global__ void simpleKernel(float* input, float* output, int size) {
+    // Calculate global thread ID
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Check bounds and perform computation
+    if (idx &lt; size) {
+        output[idx] = input[idx] * input[idx];  // Square each element
+    }
+}</code></pre>
+
+          <p>To launch the kernel from host code:</p>
+
+          <pre><code class="language-cpp">// Configure kernel launch parameters
+int threadsPerBlock = 256;
+int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+
+// Launch the kernel
+simpleKernel&lt;&lt;&lt;blocksPerGrid, threadsPerBlock&gt;&gt;&gt;(d_input, d_output, size);</code></pre>
+
+          <p>
+            This pattern—calculating a global index, checking bounds, and performing a per-element
+            operation—is the foundation of many CUDA kernels.
+          </p>
+
+          <h2>Essential Best Practices for CUDA Kernel Development</h2>
+
+          <p>
+            Adopting best practices can make the difference between an efficient kernel and an
+            underperforming one.
+          </p>
+
+          <h3>1. Optimize Thread Configuration</h3>
+
+          <p>
+            Select the number of threads per block as a multiple of 32 (the warp size). Common
+            choices are 128, 256, or 512 threads per block. Use ceiling division to ensure all
+            elements are processed:
+          </p>
+
+          <pre><code class="language-cpp">int threadsPerBlock = 256;
+int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;</code></pre>
+
+          <h3>2. Maximize Occupancy</h3>
+
+          <p>
+            Occupancy is the ratio of active warps to the maximum possible warps on an SM. Higher
+            occupancy can better hide memory latency. Key factors include:
+          </p>
+          <ul>
+            <li>Register usage per thread</li>
+            <li>Shared memory usage per block</li>
+            <li>Block size</li>
+          </ul>
+          <p>
+            Tools like <a href="https://xmartlabs.github.io/cuda-calculator/">NVIDIA's Occupancy Calculator</a>
+            or the <code>cudaOccupancyMaxPotentialBlockSize()</code> API can help determine optimal
+            configurations.
+          </p>
+
+          <h3>3. Coalesce Global Memory Access</h3>
+
+          <p>
+            Ensure that threads in a warp access consecutive memory locations to allow the GPU to
+            combine these accesses into fewer transactions, improving memory throughput.
+          </p>
+
+          <h3>4. Utilize Shared Memory Effectively</h3>
+
+          <p>
+            Shared memory is a programmer-managed cache that can dramatically reduce global memory
+            accesses. Consider the following example of summing neighboring elements:
+          </p>
+
+          <p><strong>Without shared memory:</strong></p>
+          <pre><code class="language-cpp">__global__ void sumNeighborsSimple(float* input, float* output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &lt; size) {
+        float left = (idx > 0) ? input[idx - 1] : 0;
+        float center = input[idx];
+        float right = (idx &lt; size - 1) ? input[idx + 1] : 0;
+        output[idx] = left + center + right;
+    }
+}</code></pre>
+
+          <p><strong>Improved with shared memory:</strong></p>
+          <pre><code class="language-cpp">__global__ void sumNeighborsShared(float* input, float* output, int size) {
+    __shared__ float sharedData[BLOCK_SIZE + 2];  // Block size plus halo elements
+
+    int blockStartIdx = blockIdx.x * blockDim.x;
+    int tid = threadIdx.x;
+    int globalIdx = blockStartIdx + tid;
+
+    // Load main data into shared memory
+    if (globalIdx &lt; size) {
+        sharedData[tid + 1] = input[globalIdx];
+    }
+
+    // Load halo elements at block boundaries
+    if (tid == 0) {
+        sharedData[0] = (blockStartIdx > 0) ? input[blockStartIdx - 1] : 0;
+    }
+    if (tid == blockDim.x - 1 || globalIdx == size - 1) {
+        sharedData[tid + 2] = (globalIdx &lt; size - 1) ? input[globalIdx + 1] : 0;
+    }
+
+    __syncthreads();
+
+    // Compute the sum using shared memory
+    if (globalIdx &lt; size) {
+        output[globalIdx] = sharedData[tid] + sharedData[tid + 1] + sharedData[tid + 2];
+    }
+}</code></pre>
+
+          <h3>5. Minimize Divergent Execution</h3>
+
+          <p>
+            Avoid conditional branches that cause threads within the same warp to follow different
+            execution paths. For example:
+          </p>
+
+          <pre><code class="language-cpp">// Causes divergence: alternate threads take different branches
+if (threadIdx.x % 2 == 0) {
+    // Even threads
+} else {
+    // Odd threads
+}
+
+// Better: using a condition common to all threads in the block
+if (blockIdx.x % 2 == 0) {
+    // All threads follow the same branch
+}</code></pre>
+
+          <h3>6. Avoid Shared Memory Bank Conflicts</h3>
+
+          <p>
+            Shared memory is divided into banks (typically 32 on modern GPUs). When multiple
+            threads access different addresses within the same bank simultaneously, accesses are
+            serialized. To prevent this, consider adding padding to your shared memory arrays:
+          </p>
+
+          <pre><code class="language-cpp">// Potential conflict: threads may access the same bank
+__shared__ float data[256];
+float value = data[threadIdx.x * 32];
+
+// Conflict-free: with padding to shift bank assignments
+__shared__ float dataPadded[256 + 1];
+float valuePadded = dataPadded[threadIdx.x * 32];</code></pre>
+
+          <h3>7. Use Appropriate Data Types</h3>
+
+          <p>Selecting the right data types can improve both computation and memory performance:</p>
+          <ul>
+            <li>Use 32-bit types (float, int) when possible.</li>
+            <li>Consider vectorized types (e.g., <code>float4</code>, <code>int4</code>) for increased bandwidth.</li>
+            <li>Use lower-precision types (e.g., half, char) if accuracy permits.</li>
+          </ul>
+
+          <p>Example of vectorized memory access:</p>
+          <pre><code class="language-cpp">// Scalar version
+for (int i = 0; i &lt; N; i++) {
+    output[i] = input[i] * scalar;
+}
+
+// Vectorized version (4x fewer memory operations)
+for (int i = 0; i &lt; N / 4; i++) {
+    float4 in = reinterpret_cast&lt;float4*&gt;(input)[i];
+    in.x *= scalar;
+    in.y *= scalar;
+    in.z *= scalar;
+    in.w *= scalar;
+    reinterpret_cast&lt;float4*&gt;(output)[i] = in;
+}</code></pre>
+
+          <h3>8. Leverage Compiler Optimizations</h3>
+
+          <p>CUDA's compiler (NVCC) offers flags and attributes that can boost performance.</p>
+
+          <p><strong>Basic Compiler Flags:</strong></p>
+          <pre><code class="language-bash">-O3                   // Highest level of optimization
+--use_fast_math       // Use fast (but less accurate) math functions
+-Xptxas=-v            // Display register/memory usage statistics
+-maxrregcount=N       // Limit register usage per thread</code></pre>
+
+          <p><strong>Function Attributes:</strong></p>
+          <pre><code class="language-cpp">// Inform the compiler about resource usage
+__global__ void __launch_bounds__(256, 2) myKernel() {
+    // Maximum 256 threads per block, with at least 2 blocks per SM
+}</code></pre>
+
+          <p><strong>Loop Unrolling:</strong></p>
+          <pre><code class="language-cpp">#pragma unroll 4
+for (int i = 0; i &lt; 16; i++) {
+    result += data[i];
+}</code></pre>
+
+          <p><strong>Explicit Inlining:</strong></p>
+          <pre><code class="language-cpp">__device__ __forceinline__ float square(float x) {
+    return x * x;
+}</code></pre>
+
+          <p><strong>Memory Alignment:</strong></p>
+          <pre><code class="language-cpp">struct __align__(16) AlignedStruct {
+    float4 data;
+    int count;
+};</code></pre>
+
+          <h2>Advanced CUDA Optimization Techniques</h2>
+
+          <p>
+            Once you master the basics, the following advanced techniques can further improve
+            kernel performance.
+          </p>
+
+          <h3>Dynamic Parallelism</h3>
+
+          <p>
+            Dynamic parallelism (introduced in compute capability 3.5) lets kernels launch child
+            kernels, enabling nested parallelism:
+          </p>
+
+          <pre><code class="language-cpp">__global__ void parentKernel() {
+    if (someCondition()) {
+        // Launch a child kernel
+        childKernel&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;();
+    }
+}</code></pre>
+
+          <h3>Warp-Level Primitives</h3>
+
+          <p>
+            For devices with compute capability 3.0 and above, warp-level primitives offer
+            efficient synchronization and communication:
+          </p>
+
+          <pre><code class="language-cpp">// Warp-level reduction using shuffle
+__device__ float warpReduceSum(float val) {
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    }
+    return val;
+}
+
+// Block-wide reduction using warp-level primitives
+__device__ float blockReduceSum(float val) {
+    static __shared__ float shared[32]; // One partial sum per warp
+    int lane = threadIdx.x % warpSize;
+    int wid = threadIdx.x / warpSize;
+
+    // Each warp performs a reduction
+    val = warpReduceSum(val);
+
+    // Write reduced value to shared memory
+    if (lane == 0) shared[wid] = val;
+
+    __syncthreads();
+
+    // Final reduction performed by the first warp
+    val = (threadIdx.x &lt; blockDim.x / warpSize) ? shared[lane] : 0;
+    if (wid == 0) val = warpReduceSum(val);
+
+    return val;
+}</code></pre>
+
+          <h3>Cooperative Groups</h3>
+
+          <p>
+            Introduced in CUDA 9, Cooperative Groups provide fine-grained control over thread
+            synchronization:
+          </p>
+
+          <pre><code class="language-cpp">#include &lt;cooperative_groups.h&gt;
+namespace cg = cooperative_groups;
+
+__global__ void cooperativeKernel(float* data) {
+    cg::thread_block block = cg::this_thread_block();
+    block.sync();
+
+    cg::thread_block_tile&lt;32&gt; tile32 = cg::tiled_partition&lt;32&gt;(block);
+    tile32.sync();
+
+    cg::grid_group grid = cg::this_grid();
+    grid.sync();
+}</code></pre>
+
+          <h3>Tensor Cores</h3>
+
+          <p>
+            For matrix-intensive applications, Tensor Cores (available in newer GPUs) significantly
+            accelerate matrix multiply-accumulate operations, especially with half-precision inputs:
+          </p>
+
+          <pre><code class="language-cpp">#include &lt;mma.h&gt;
+using namespace nvcuda::wmma;
+
+__global__ void tensorCoreMatrixMultiply(half* A, half* B, float* C, int M, int N, int K) {
+    // Declare fragments
+    fragment&lt;matrix_a, 16, 16, 16, half, row_major&gt; a_frag;
+    fragment&lt;matrix_b, 16, 16, 16, half, col_major&gt; b_frag;
+    fragment&lt;accumulator, 16, 16, 16, float&gt; c_frag;
+
+    fill_fragment(c_frag, 0.0f);
+    load_matrix_sync(a_frag, A, K);
+    load_matrix_sync(b_frag, B, K);
+
+    mma_sync(c_frag, a_frag, b_frag, c_frag);
+    store_matrix_sync(C, c_frag, N, mem_row_major);
+}</code></pre>
+
+          <h2>Debugging and Profiling CUDA Kernels</h2>
+
+          <p>Effective debugging and profiling are key to developing robust and optimized CUDA kernels.</p>
+
+          <h3>Error Checking</h3>
+
+          <p>Always check CUDA API calls for errors:</p>
+
+          <pre><code class="language-cpp">#define CHECK_CUDA_ERROR(call) \
+do { \
+    cudaError_t error = call; \
+    if (error != cudaSuccess) { \
+        fprintf(stderr, "CUDA error: %s at %s:%d\n", \
+                cudaGetErrorString(error), __FILE__, __LINE__); \
+        exit(EXIT_FAILURE); \
+    } \
+} while(0)
+
+// Example usage:
+CHECK_CUDA_ERROR(cudaMalloc(&amp;d_data, size));</code></pre>
+
+          <p>Also, check kernel launches:</p>
+
+          <pre><code class="language-cpp">myKernel&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(args);
+CHECK_CUDA_ERROR(cudaGetLastError());
+CHECK_CUDA_ERROR(cudaDeviceSynchronize());</code></pre>
+
+          <h3>CUDA-GDB and cuda-memcheck</h3>
+          <ul>
+            <li><strong>cuda-gdb</strong>: Source-level debugging of device code.</li>
+            <li><strong>cuda-memcheck</strong>: Detects memory errors like out-of-bounds accesses.</li>
+          </ul>
+
+          <h3>NVIDIA Nsight and Visual Profiler</h3>
+
+          <p>
+            Tools such as <strong>NVIDIA Nsight Systems</strong>, <strong>Nsight Compute</strong>,
+            and <strong>Visual Profiler</strong> help identify performance bottlenecks by providing
+            metrics on memory throughput, compute utilization, warp efficiency, and instruction
+            throughput.
+          </p>
+
+          <h2>Common CUDA Kernel Optimization Patterns</h2>
+
+          <p>Recognizing common optimization patterns can save development time.</p>
+
+          <h3>Tiling Pattern</h3>
+
+          <p>Dividing input data into tiles that fit in shared memory minimizes global memory accesses:</p>
+
+          <pre><code class="language-cpp">__global__ void matrixMultiplyTiled(float* A, float* B, float* C, int M, int N, int K) {
+    __shared__ float As[TILE_SIZE][TILE_SIZE];
+    __shared__ float Bs[TILE_SIZE][TILE_SIZE];
+
+    int row = blockIdx.y * TILE_SIZE + threadIdx.y;
+    int col = blockIdx.x * TILE_SIZE + threadIdx.x;
+    float sum = 0.0f;
+
+    for (int t = 0; t &lt; (K + TILE_SIZE - 1) / TILE_SIZE; t++) {
+        if (row &lt; M &amp;&amp; t * TILE_SIZE + threadIdx.x &lt; K) {
+            As[threadIdx.y][threadIdx.x] = A[row * K + t * TILE_SIZE + threadIdx.x];
+        } else {
+            As[threadIdx.y][threadIdx.x] = 0.0f;
+        }
+        if (col &lt; N &amp;&amp; t * TILE_SIZE + threadIdx.y &lt; K) {
+            Bs[threadIdx.y][threadIdx.x] = B[(t * TILE_SIZE + threadIdx.y) * N + col];
+        } else {
+            Bs[threadIdx.y][threadIdx.x] = 0.0f;
+        }
+        __syncthreads();
+
+        for (int i = 0; i &lt; TILE_SIZE; i++) {
+            sum += As[threadIdx.y][i] * Bs[i][threadIdx.x];
+        }
+        __syncthreads();
+    }
+
+    if (row &lt; M &amp;&amp; col &lt; N) {
+        C[row * N + col] = sum;
+    }
+}</code></pre>
+
+          <h3>Thread Coarsening</h3>
+
+          <p>
+            Thread coarsening lets each thread process multiple elements, reducing overhead and
+            increasing instruction-level parallelism:
+          </p>
+
+          <pre><code class="language-cpp">__global__ void vectorAddCoarsened(float* A, float* B, float* C, int N) {
+    int i = blockIdx.x * blockDim.x * 4 + threadIdx.x;
+
+    if (i + 3 * blockDim.x &lt; N) {
+        float a1 = A[i];
+        float a2 = A[i + blockDim.x];
+        float a3 = A[i + 2 * blockDim.x];
+        float a4 = A[i + 3 * blockDim.x];
+
+        float b1 = B[i];
+        float b2 = B[i + blockDim.x];
+        float b3 = B[i + 2 * blockDim.x];
+        float b4 = B[i + 3 * blockDim.x];
+
+        C[i] = a1 + b1;
+        C[i + blockDim.x] = a2 + b2;
+        C[i + 2 * blockDim.x] = a3 + b3;
+        C[i + 3 * blockDim.x] = a4 + b4;
+    } else {
+        // Handle the boundary case for remaining elements
+        for (int j = 0; j &lt; 4; j++) {
+            int idx = i + j * blockDim.x;
+            if (idx &lt; N) {
+                C[idx] = A[idx] + B[idx];
+            }
+        }
+    }
+}</code></pre>
+
+          <h3>Persistent Threads</h3>
+
+          <p>
+            The persistent threads pattern keeps GPU threads active over the lifetime of the
+            application, dynamically fetching work to improve load balancing:
+          </p>
+
+          <pre><code class="language-cpp">__global__ void persistentKernel(volatile int* queue, volatile int* queueCounter,
+                                   float* data, int maxItems) {
+    while (true) {
+        int itemIdx = -1;
+        if (threadIdx.x == 0) {
+            itemIdx = atomicAdd((int*)queueCounter, 1);
+        }
+        // Broadcast the work index to all threads in the block
+        itemIdx = __shfl_sync(0xffffffff, itemIdx, 0);
+
+        if (itemIdx &gt;= maxItems) {
+            break;  // Exit if no more work
+        }
+        // Process the work item
+        processItem(data, itemIdx);
+    }
+}</code></pre>
+
+          <h2>CUDA Kernel Best Practices Checklist</h2>
+
+          <p>Use the following checklist to ensure your kernels adhere to best practices:</p>
+
+          <ul>
+            <li>
+              <strong>Memory Access Patterns</strong>
+              <ul>
+                <li>Ensure global memory accesses are coalesced.</li>
+                <li>Use shared memory for frequently reused data.</li>
+                <li>Avoid bank conflicts in shared memory.</li>
+                <li>Consider texture memory for read-only data with spatial locality.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Thread Organization</strong>
+              <ul>
+                <li>Choose thread block sizes that are multiples of 32 (warp size).</li>
+                <li>Balance resource usage (registers, shared memory) to maximize occupancy.</li>
+                <li>Minimize divergent execution within warps.</li>
+                <li>Apply thread coarsening in compute-bound kernels.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Synchronization and Communication</strong>
+              <ul>
+                <li>Limit thread synchronization.</li>
+                <li>Use warp-level primitives when possible.</li>
+                <li>Leverage cooperative groups for flexible synchronization.</li>
+                <li>Employ effective reduction patterns.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Resource Usage</strong>
+              <ul>
+                <li>Monitor register and shared memory usage.</li>
+                <li>Use compiler hints like <code>__launch_bounds__</code> appropriately.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Error Handling</strong>
+              <ul>
+                <li>Check CUDA API calls and kernel launches for errors.</li>
+                <li>Use tools like <code>cuda-memcheck</code> for detecting memory errors.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Performance Analysis</strong>
+              <ul>
+                <li>Profile kernels to identify bottlenecks.</li>
+                <li>Compare achieved performance against theoretical limits.</li>
+                <li>Explore alternative algorithms if necessary.</li>
+              </ul>
+            </li>
+          </ul>
+
+          <h2>Conclusion</h2>
+
+          <p>
+            CUDA kernel development merges the challenges of parallel programming with the nuances
+            of GPU architecture. By mastering the fundamentals and applying the best practices
+            outlined in this guide, you can harness the full computational power of modern GPUs.
+          </p>
+
+          <p>
+            Remember, optimization is an iterative process. Start with a correct implementation,
+            profile to identify bottlenecks, and then methodically apply optimizations. Often, the
+            most significant improvements come from algorithmic changes rather than low-level tweaks.
+          </p>
+
+          <p>
+            As GPU hardware continues to evolve, so too will the best practices for CUDA kernel
+            development. Stay informed about new CUDA features and adapt your techniques accordingly.
+          </p>
+
+          <hr />
+
+          <h2>Embracing the Learning Journey</h2>
+
+          <p>
+            It's important to note that the domain of CUDA programming is vast and continually
+            evolving. Many developers find that mastering CUDA involves a lot of trial and error,
+            reading blogs and articles, and examining others' code. If you didn't fully grasp every
+            detail in this guide, know that this is a normal part of learning a complex technology.
+            Every individual's path to understanding CUDA can be different—what matters is
+            persistence, continuous learning, and practical experience. Embrace the challenges and
+            enjoy the process of discovery as you refine your skills.
+          </p>
+
+          <p>Happy coding, and may your kernels run efficiently!</p>
+
         </article>
       </main>
     </div>
+    <script src="../theme.js"></script>
   </body>
 </html>
