@@ -1,0 +1,170 @@
+:root {
+  --background: #ffffff;
+  --text: #111111;
+  --muted: #5a6472;
+  --border: #d8d8d8;
+  --accent: #405a4b;
+  --inline-code: #eef1eb;
+  --max-width: 42rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 18px;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 1.7;
+}
+
+.site {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.site-header {
+  margin-bottom: 3rem;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.nav a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav a[aria-current="page"] {
+  color: var(--accent);
+}
+
+.nav a:hover,
+.nav a:focus-visible,
+a:hover,
+a:focus-visible {
+  color: var(--accent);
+}
+
+main section,
+article.post {
+  margin-bottom: 3rem;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.8rem;
+  line-height: 1.25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.45rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+p,
+ul,
+ol,
+pre {
+  margin: 0 0 1rem;
+}
+
+ul,
+ol {
+  padding-left: 1.25rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+code,
+pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.95rem;
+}
+
+code {
+  background: var(--inline-code);
+  padding: 0.1rem 0.3rem;
+}
+
+pre {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  padding: 0.9rem 1rem;
+  background: #fbfbfb;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.post-list,
+.project-list {
+  list-style: none;
+  padding: 0;
+}
+
+.post-list li,
+.project-list li {
+  padding: 0 0 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-list li:last-child,
+.project-list li:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.post-list h2,
+.post-list h3 {
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 17px;
+  }
+
+  .site {
+    padding-top: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+}
