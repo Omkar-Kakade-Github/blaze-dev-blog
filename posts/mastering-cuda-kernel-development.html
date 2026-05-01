@@ -116,7 +116,7 @@ __shared__ float sharedArray[256];        // Shared within a thread block</code>
             and additional context to help you grasp these concepts quickly.
           </p>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/CUDA_thread_hierarchy.png" alt="CUDA thread hierarchy diagram" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/CUDA_thread_hierarchy.png" alt="CUDA thread hierarchy diagram" style="max-width: 100%;" /></figure>
 
           <h2>Understanding the CUDA Programming Model</h2>
 
@@ -126,7 +126,7 @@ __shared__ float sharedArray[256];        // Shared within a thread block</code>
             structure that maximizes both flexibility and performance.
           </p>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/visual_selection.png" alt="Visual overview of CUDA programming model" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/visual_selection.png" alt="Visual overview of CUDA programming model" style="max-width: 100%;" /></figure>
 
           <h3>The Thread Hierarchy</h3>
 
@@ -155,7 +155,7 @@ if (globalIdx &lt; dataSize) {
     output[globalIdx] = someOperation(input[globalIdx]);
 }</code></pre>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/cuda_indexing.png" alt="CUDA indexing diagram" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/cuda_indexing.png" alt="CUDA indexing diagram" style="max-width: 100%;" /></figure>
 
           <p>
             There is a really <a href="https://anuradha-15.medium.com/cuda-thread-indexing-fb9910cba084">great article</a>
@@ -206,7 +206,7 @@ if (globalIdx &lt; dataSize) {
             can run concurrently.
           </p>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/memory-hierarchy-in-gpus-1-625x381.png" alt="Memory hierarchy in GPUs" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/memory-hierarchy-in-gpus-1-625x381.png" alt="Memory hierarchy in GPUs" style="max-width: 100%;" /></figure>
 
           <h3>Warp Execution Model</h3>
 
@@ -222,7 +222,7 @@ if (globalIdx &lt; dataSize) {
 
           <h3>Memory Hierarchy and Organization</h3>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/gpu2.png" alt="GPU memory hierarchy" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/gpu2.png" alt="GPU memory hierarchy" style="max-width: 100%;" /></figure>
 
           <ol>
             <li><strong>Global Memory:</strong> Highest capacity with high latency; optimized when memory accesses are coalesced.</li>
@@ -237,7 +237,7 @@ if (globalIdx &lt; dataSize) {
             the design of efficient CUDA code.
           </p>
 
-          <img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/Screenshot_from_2025-03-06_21-16-42.png" alt="GPU architecture screenshot" />
+          <figure style="text-align: center;"><img src="../images/Mastering%20CUDA%20Kernel%20Development%20A%20Comprehensive%20%201b140469be818028830bda8bbdcaaf01/Screenshot_from_2025-03-06_21-16-42.png" alt="GPU architecture screenshot" style="max-width: 100%;" /></figure>
 
           <h2>Global Memory Access Patterns</h2>
 
